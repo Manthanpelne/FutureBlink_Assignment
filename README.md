@@ -33,5 +33,10 @@ During development, the following free-tier models were tested:
 ### 1. Clone the repository
 ```bash
 git clone [https://github.com/Manthanpelne/FutureBlink_Assignment.git](https://github.com/Manthanpelne/FutureBlink_Assignment.git)
+##For frontend:
 cd frontend
 npm run dev
+
+##for Backend
+cd backend
+npm run server
