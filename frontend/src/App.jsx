@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useMemo, useEffect } from 'react'; // Added useEffect
+import React, { useState, useMemo, useEffect, useCallback } from 'react'; // Added useEffect
 import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from '@xyflow/react';
 import axios from 'axios'; // 1. Added Missing Axios Import
 import '@xyflow/react/dist/style.css';
@@ -7,10 +7,11 @@ import InputNode from './components/InputNode';
 
 const App = () => {
   const [prompt, setPrompt] = useState("");
+  const [lastAiResponse, setLastAiResponse] = useState("");
   const nodeTypes = useMemo(() => ({ promptNode: InputNode }), []);
 
   // Define Handlers
-  const handleRunFlow = async () => {
+  const handleRunFlow = useCallback(async () => {
     if (!prompt) return alert("Please enter a prompt!");
 
     setNodes((nds) =>
@@ -18,38 +19,37 @@ const App = () => {
     );
 
     try {
-      const res = await axios.post('http://localhost:5000/api/ask-ai', { prompt });
+      const res = await axios.post('https://futureblink-assignment-w81o.onrender.com/api/ask-ai', { prompt });
       const aiResponse = res.data.answer;
-      
+      setLastAiResponse(aiResponse);
       setNodes((nds) =>
         nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: aiResponse } } : n)
       );
     } catch (err) {
-      alert("Backend Error! Is your server running on port 5000?");
+      alert("Backend Error!");
       setNodes((nds) =>
         nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: 'Error fetching response' } } : n)
       );
     }
-  };
+  },[prompt]);
 
-  const handleSaveToDB = async () => {
-    const resultNode = nodes.find(n => n.id === 'node-2');
-    const responseText = resultNode?.data?.label;
+  console.log("aires",lastAiResponse)
 
-    if (!responseText || responseText === 'Response will appear here...' || responseText === 'Thinking...') {
-      return alert("Generate an AI response first!");
+const handleSaveToDB = useCallback(async () => {
+    if (!lastAiResponse) {
+      return console.error("no response yet")
     }
 
     try {
-      await axios.post('http://localhost:5000/api/save', { 
+      await axios.post('https://futureblink-assignment-w81o.onrender.com/api/save', { 
         prompt: prompt, 
-        response: responseText 
+        response: lastAiResponse 
       });
       alert("Data saved to MongoDB!");
     } catch (err) {
-      alert("Save failed. Check backend console.");
+      alert("Save failed.");
     }
-  };
+},[prompt,lastAiResponse]);
 
   // Initial Configuration
   const initialNodes = [
@@ -79,24 +79,26 @@ const App = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
 
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === 'node-1') {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              onChange: (e) => setPrompt(e.target.value),
-              onRun: handleRunFlow,
-              onSave: handleSaveToDB,
-            },
-          };
-        }
-        return node;
-      })
-    );
-  }, [prompt]); // Re-run whenever prompt changes
+// src/App.js
+
+useEffect(() => {
+  setNodes((nds) =>
+    nds.map((node) => {
+      if (node.id === 'node-1') {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            onChange: (e) => setPrompt(e.target.value),
+            onRun: handleRunFlow,
+            onSave: handleSaveToDB, 
+          },
+        };
+      }
+      return node;
+    })
+  );
+}, [prompt, lastAiResponse, handleRunFlow, handleSaveToDB, setNodes]);
 
   return (
     <div className="h-screen w-screen bg-slate-50 flex flex-col">
