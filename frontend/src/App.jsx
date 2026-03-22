@@ -1,6 +1,7 @@
 // src/App.js
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react'; // Added useEffect
 import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from '@xyflow/react';
+import axios from 'axios'; // 1. Added Missing Axios Import
 import '@xyflow/react/dist/style.css';
 import InputNode from './components/InputNode';
 
@@ -8,12 +9,59 @@ const App = () => {
   const [prompt, setPrompt] = useState("");
   const nodeTypes = useMemo(() => ({ promptNode: InputNode }), []);
 
+  // Define Handlers
+  const handleRunFlow = async () => {
+    if (!prompt) return alert("Please enter a prompt!");
+
+    setNodes((nds) =>
+      nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: 'Thinking...' } } : n)
+    );
+
+    try {
+      const res = await axios.post('http://localhost:5000/api/ask-ai', { prompt });
+      const aiResponse = res.data.answer;
+      
+      setNodes((nds) =>
+        nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: aiResponse } } : n)
+      );
+    } catch (err) {
+      alert("Backend Error! Is your server running on port 5000?");
+      setNodes((nds) =>
+        nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: 'Error fetching response' } } : n)
+      );
+    }
+  };
+
+  const handleSaveToDB = async () => {
+    const resultNode = nodes.find(n => n.id === 'node-2');
+    const responseText = resultNode?.data?.label;
+
+    if (!responseText || responseText === 'Response will appear here...' || responseText === 'Thinking...') {
+      return alert("Generate an AI response first!");
+    }
+
+    try {
+      await axios.post('http://localhost:5000/api/save', { 
+        prompt: prompt, 
+        response: responseText 
+      });
+      alert("Data saved to MongoDB!");
+    } catch (err) {
+      alert("Save failed. Check backend console.");
+    }
+  };
+
+  // Initial Configuration
   const initialNodes = [
     { 
       id: 'node-1', 
       type: 'promptNode', 
-      data: { onChange: (e) => setPrompt(e.target.value) }, 
-      position: { x: 100, y: 150 } 
+      data: { 
+        onChange: (e) => setPrompt(e.target.value),
+        onRun: handleRunFlow,
+        onSave: handleSaveToDB
+      }, 
+      position: { x: 50, y: 150 }
     },
     { 
       id: 'node-2', 
@@ -30,34 +78,34 @@ const App = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const handleRunFlow = () => {
-    console.log("Prompt captured:", prompt);
+
+  useEffect(() => {
     setNodes((nds) =>
-      nds.map((n) => n.id === 'node-2' ? { ...n, data: { label: 'AI is thinking...' } } : n)
+      nds.map((node) => {
+        if (node.id === 'node-1') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onChange: (e) => setPrompt(e.target.value),
+              onRun: handleRunFlow,
+              onSave: handleSaveToDB,
+            },
+          };
+        }
+        return node;
+      })
     );
-  };
+  }, [prompt]); // Re-run whenever prompt changes
 
   return (
     <div className="h-screen w-screen bg-slate-50 flex flex-col">
-      {/* Header / Toolbar */}
-      <header className="h-16 border-b bg-white flex items-center justify-between px-8 z-10">
+      <header className="h-16 border-b bg-white flex items-center px-8 z-10">
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           AI Flow Builder
         </h1>
-        <div className="flex gap-3">
-          <button 
-            onClick={handleRunFlow}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-all shadow-lg shadow-blue-200 active:scale-95"
-          >
-            Run Flow
-          </button>
-          <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-lg font-medium transition-all">
-            Save
-          </button>
-        </div>
       </header>
 
-      {/* Canvas Area */}
       <div className="flex-grow">
         <ReactFlow
           nodes={nodes}
