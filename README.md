@@ -5,8 +5,8 @@ A specialized MERN stack application that allows users to architect AI prompts u
 
 ## 🌐 Links
 - **GitHub Repository:** [Manthanpelne/FutureBlink_Assignment](https://github.com/Manthanpelne/FutureBlink_Assignment)
-- **Backend Deployment:** [Deployed on Render](https://futureblink-assignment-w81o.onrender.com)
-- **Live Deployment:** [Deployed on Netlify](https://dulcet-lamington-9f866d.netlify.app/)
+- **Backend Deployment:** [Render Link](https://futureblink-assignment-w81o.onrender.com)
+- **Live Deployment:** [Netlify Link](https://dulcet-lamington-9f866d.netlify.app/)
 
 ## ✨ Features
 - **Visual Flow Interface:** Use `React Flow` to manage AI prompts through draggable nodes.
